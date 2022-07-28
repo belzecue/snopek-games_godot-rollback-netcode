@@ -4,8 +4,8 @@ const DummyNetworkAdaptor = preload("res://addons/godot-rollback-netcode/DummyNe
 
 onready var main_menu = $CanvasLayer/MainMenu
 onready var connection_panel = $CanvasLayer/ConnectionPanel
-onready var host_field = $CanvasLayer/ConnectionPanel/GridContainer/HostField
-onready var port_field = $CanvasLayer/ConnectionPanel/GridContainer/PortField
+onready var host_field = $CanvasLayer/ConnectionPanel/VBoxContainer/GridContainer/HostField
+onready var port_field = $CanvasLayer/ConnectionPanel/VBoxContainer/GridContainer/PortField
 onready var message_label = $CanvasLayer/MessageLabel
 onready var sync_lost_label = $CanvasLayer/SyncLostLabel
 onready var reset_button = $CanvasLayer/ResetButton
@@ -13,6 +13,7 @@ onready var reset_button = $CanvasLayer/ResetButton
 const LOG_FILE_DIRECTORY = 'user://detailed_logs'
 
 var logging_enabled := true
+var is_spectator := false
 
 func _ready() -> void:
 	get_tree().connect("network_peer_connected", self, "_on_network_peer_connected")
@@ -59,6 +60,10 @@ func _on_ClientButton_pressed() -> void:
 	connection_panel.visible = false
 	main_menu.visible = false
 	message_label.text = "Connecting..."
+
+func _on_SpectatorButton_pressed() -> void:
+	is_spectator = true
+	_on_ClientButton_pressed()
 
 func _on_network_peer_connected(peer_id: int):
 	$ServerPlayer.set_network_master(1)

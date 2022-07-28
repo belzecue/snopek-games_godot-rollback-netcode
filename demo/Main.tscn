@@ -38,74 +38,91 @@ margin_bottom = 40.0
 text = "Play Online"
 
 [node name="ConnectionPanel" type="WindowDialog" parent="CanvasLayer"]
+visible = true
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 margin_left = -189.0
-margin_top = -45.0
+margin_top = -50.0
 margin_right = 189.0
-margin_bottom = 45.0
+margin_bottom = 50.0
 window_title = "Online"
 
-[node name="GridContainer" type="GridContainer" parent="CanvasLayer/ConnectionPanel"]
-margin_left = 7.0
-margin_top = 7.0
-margin_right = 371.0
-margin_bottom = 83.0
-columns = 2
-__meta__ = {
-"_edit_use_anchors_": false
-}
+[node name="VBoxContainer" type="VBoxContainer" parent="CanvasLayer/ConnectionPanel"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 10.0
+margin_top = 10.0
+margin_right = -10.0
+margin_bottom = -10.0
+custom_constants/separation = 10
 
-[node name="HostLabel" type="Label" parent="CanvasLayer/ConnectionPanel/GridContainer"]
+[node name="GridContainer" type="GridContainer" parent="CanvasLayer/ConnectionPanel/VBoxContainer"]
+margin_right = 358.0
+margin_bottom = 52.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+columns = 2
+
+[node name="HostLabel" type="Label" parent="CanvasLayer/ConnectionPanel/VBoxContainer/GridContainer"]
 margin_top = 5.0
-margin_right = 180.0
+margin_right = 177.0
 margin_bottom = 19.0
 size_flags_horizontal = 3
 text = "Host"
 
-[node name="HostField" type="LineEdit" parent="CanvasLayer/ConnectionPanel/GridContainer"]
-margin_left = 184.0
-margin_right = 364.0
+[node name="HostField" type="LineEdit" parent="CanvasLayer/ConnectionPanel/VBoxContainer/GridContainer"]
+margin_left = 181.0
+margin_right = 358.0
 margin_bottom = 24.0
 size_flags_horizontal = 3
 text = "127.0.0.1"
 align = 2
 
-[node name="PortLabel" type="Label" parent="CanvasLayer/ConnectionPanel/GridContainer"]
+[node name="PortLabel" type="Label" parent="CanvasLayer/ConnectionPanel/VBoxContainer/GridContainer"]
 margin_top = 33.0
-margin_right = 180.0
+margin_right = 177.0
 margin_bottom = 47.0
 size_flags_horizontal = 3
 text = "Port"
 
-[node name="PortField" type="LineEdit" parent="CanvasLayer/ConnectionPanel/GridContainer"]
-margin_left = 184.0
+[node name="PortField" type="LineEdit" parent="CanvasLayer/ConnectionPanel/VBoxContainer/GridContainer"]
+margin_left = 181.0
 margin_top = 28.0
-margin_right = 364.0
+margin_right = 358.0
 margin_bottom = 52.0
 size_flags_horizontal = 3
 text = "9999"
 align = 2
 
-[node name="ServerButton" type="Button" parent="CanvasLayer/ConnectionPanel/GridContainer"]
-margin_top = 56.0
-margin_right = 180.0
-margin_bottom = 76.0
+[node name="HBoxContainer" type="HBoxContainer" parent="CanvasLayer/ConnectionPanel/VBoxContainer"]
+margin_top = 62.0
+margin_right = 358.0
+margin_bottom = 82.0
+
+[node name="ServerButton" type="Button" parent="CanvasLayer/ConnectionPanel/VBoxContainer/HBoxContainer"]
+margin_right = 116.0
+margin_bottom = 20.0
 size_flags_horizontal = 3
 text = "Server"
 
-[node name="ClientButton" type="Button" parent="CanvasLayer/ConnectionPanel/GridContainer"]
-margin_left = 184.0
-margin_top = 56.0
-margin_right = 364.0
-margin_bottom = 76.0
+[node name="ClientButton" type="Button" parent="CanvasLayer/ConnectionPanel/VBoxContainer/HBoxContainer"]
+margin_left = 120.0
+margin_right = 237.0
+margin_bottom = 20.0
 size_flags_horizontal = 3
 text = "Client"
 __meta__ = {
 "_edit_use_anchors_": false
 }
+
+[node name="SpectatorButton" type="Button" parent="CanvasLayer/ConnectionPanel/VBoxContainer/HBoxContainer"]
+margin_left = 241.0
+margin_right = 358.0
+margin_bottom = 20.0
+size_flags_horizontal = 3
+text = "Spectator"
 
 [node name="MessageLabel" type="Label" parent="CanvasLayer"]
 anchor_left = 0.5
@@ -152,6 +169,6 @@ position = Vector2( 771, 364 )
 
 [connection signal="pressed" from="CanvasLayer/MainMenu/LocalButton" to="." method="_on_LocalButton_pressed"]
 [connection signal="pressed" from="CanvasLayer/MainMenu/OnlineButton" to="." method="_on_OnlineButton_pressed"]
-[connection signal="pressed" from="CanvasLayer/ConnectionPanel/GridContainer/ServerButton" to="." method="_on_ServerButton_pressed"]
-[connection signal="pressed" from="CanvasLayer/ConnectionPanel/GridContainer/ClientButton" to="." method="_on_ClientButton_pressed"]
+[connection signal="pressed" from="CanvasLayer/ConnectionPanel/VBoxContainer/HBoxContainer/ServerButton" to="." method="_on_ServerButton_pressed"]
+[connection signal="pressed" from="CanvasLayer/ConnectionPanel/VBoxContainer/HBoxContainer/ClientButton" to="." method="_on_ClientButton_pressed"]
 [connection signal="pressed" from="CanvasLayer/ResetButton" to="." method="_on_ResetButton_pressed"]
