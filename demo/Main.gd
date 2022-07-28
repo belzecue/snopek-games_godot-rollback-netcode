@@ -75,8 +75,9 @@ func _start_client() -> void:
 	main_menu.visible = false
 	message_label.text = "Connecting..."
 
-func _on_network_peer_connected(_peer_id: int):
-	pass
+func _on_network_peer_connected(peer_id: int):
+	if peer_id != 1:
+		rpc_id(peer_id, "register_player", {spectator = SyncManager.spectating})
 
 func _on_network_peer_disconnected(peer_id: int):
 	var peer = SyncManager.peers[peer_id]
@@ -85,7 +86,8 @@ func _on_network_peer_disconnected(peer_id: int):
 	SyncManager.remove_peer(peer_id)
 
 func _on_server_connected() -> void:
-	$ClientPlayer.set_network_master(get_tree().get_network_unique_id())
+	if not SyncManager.spectating:
+		$ClientPlayer.set_network_master(get_tree().get_network_unique_id())
 	SyncManager.add_peer(1)
 	rpc("register_player", {spectator = SyncManager.spectating})
 

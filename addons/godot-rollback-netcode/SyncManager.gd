@@ -1332,8 +1332,19 @@ func _on_received_input_tick(peer_id: int, serialized_msg: PoolByteArray) -> voi
 		return
 	
 	var msg = message_serializer.unserialize_message(serialized_msg)
-	
+
+	var peer: Peer = peers[peer_id]
+
+	# Record the next frame the other peer needs.
+	peer.next_local_input_tick_requested = max(msg[MessageSerializer.InputMessageKey.NEXT_INPUT_TICK_REQUESTED], peer.next_local_input_tick_requested)
+
+	# Record the next state hash that the other peer needs.
+	peer.next_local_hash_tick_requested = max(msg[MessageSerializer.InputMessageKey.NEXT_HASH_TICK_REQUESTED], peer.next_local_hash_tick_requested)
+		
 	var all_remote_input: Dictionary = msg[MessageSerializer.InputMessageKey.INPUT]
+	if all_remote_input.size() == 0:
+		return
+	
 	var all_remote_ticks = all_remote_input.keys()
 	all_remote_ticks.sort()
 	
@@ -1354,8 +1365,6 @@ func _on_received_input_tick(peer_id: int, serialized_msg: PoolByteArray) -> voi
 	
 	if _logger:
 		_logger.begin_interframe()
-	
-	var peer: Peer = peers[peer_id]
 	
 	# Only process if it contains ticks we haven't received yet.
 	if last_remote_tick > peer.last_remote_input_tick_received:
@@ -1410,10 +1419,7 @@ func _on_received_input_tick(peer_id: int, serialized_msg: PoolByteArray) -> voi
 		
 		# Update _input_complete_tick for new input.
 		_update_input_complete_tick()
-	
-	# Record the next frame the other peer needs.
-	peer.next_local_input_tick_requested = max(msg[MessageSerializer.InputMessageKey.NEXT_INPUT_TICK_REQUESTED], peer.next_local_input_tick_requested)
-	
+
 	# Number of frames the remote is predicting for us.
 	peer.remote_lag = (peer.last_remote_input_tick_received + 1) - peer.next_local_input_tick_requested
 	
@@ -1430,9 +1436,6 @@ func _on_received_input_tick(peer_id: int, serialized_msg: PoolByteArray) -> voi
 	while index < state_hashes.size() and state_hashes[index].has_peer_hash(peer_id):
 		peer.last_remote_hash_tick_received += 1
 		index += 1
-	
-	# Record the next state hash that the other peer needs.
-	peer.next_local_hash_tick_requested = max(msg[MessageSerializer.InputMessageKey.NEXT_HASH_TICK_REQUESTED], peer.next_local_hash_tick_requested)
 
 func reset_mechanized_data() -> void:
 	mechanized_input_received.clear()
