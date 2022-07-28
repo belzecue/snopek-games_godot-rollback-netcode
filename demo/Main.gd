@@ -76,7 +76,8 @@ func _start_client() -> void:
 	message_label.text = "Connecting..."
 
 func _on_network_peer_connected(peer_id: int):
-	if peer_id != 1:
+	# Tell sibling peers about ourselves.
+	if not get_tree().is_network_server() and peer_id != 1:
 		rpc_id(peer_id, "register_player", {spectator = SyncManager.spectating})
 
 func _on_network_peer_disconnected(peer_id: int):
@@ -89,21 +90,23 @@ func _on_server_connected() -> void:
 	if not SyncManager.spectating:
 		$ClientPlayer.set_network_master(get_tree().get_network_unique_id())
 	SyncManager.add_peer(1)
-	rpc("register_player", {spectator = SyncManager.spectating})
+	# Tell server about ourselves.
+	rpc_id(1, "register_player", {spectator = SyncManager.spectating})
 
 func _on_server_disconnected() -> void:
 	_on_network_peer_disconnected(1)
 
-master func register_player(options: Dictionary = {}) -> void:
+remote func register_player(options: Dictionary = {}) -> void:
 	var peer_id = get_tree().get_rpc_sender_id()
 	SyncManager.add_peer(peer_id, options)
 	var peer = SyncManager.peers[peer_id]
 
-	if get_tree().is_network_server() and not peer.spectator:
-		get_tree().network_peer.refuse_new_connections = true
+	if not peer.spectator:
 		$ClientPlayer.set_network_master(peer_id)
-		
+
 		if get_tree().is_network_server():
+			get_tree().network_peer.refuse_new_connections = true
+			
 			message_label.text = "Starting..."
 			# Give a little time to get ping data.
 			yield(get_tree().create_timer(2.0), "timeout")

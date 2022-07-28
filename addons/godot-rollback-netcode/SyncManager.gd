@@ -1421,7 +1421,8 @@ func _on_received_input_tick(peer_id: int, serialized_msg: PoolByteArray) -> voi
 		_update_input_complete_tick()
 
 	# Number of frames the remote is predicting for us.
-	peer.remote_lag = (peer.last_remote_input_tick_received + 1) - peer.next_local_input_tick_requested
+	if not spectating:
+		peer.remote_lag = (peer.last_remote_input_tick_received + 1) - peer.next_local_input_tick_requested
 	
 	# Process state hashes.
 	var remote_state_hashes = msg[MessageSerializer.InputMessageKey.STATE_HASHES]
