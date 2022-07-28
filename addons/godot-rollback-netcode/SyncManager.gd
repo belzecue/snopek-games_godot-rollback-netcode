@@ -1177,15 +1177,15 @@ func _physics_process(_delta: float) -> void:
 	current_tick += 1
 	
 	if not mechanized:
+		var input_frame := _get_or_create_input_frame(input_tick)
+		# The underlying error would have already been reported in
+		# _get_or_create_input_frame() so we can just return here.
+		if input_frame == null:
+			return
+
 		if spectating:
 			_send_spectating_messages_to_player_peers()
 		else:
-			var input_frame := _get_or_create_input_frame(input_tick)
-			# The underlying error would have already been reported in
-			# _get_or_create_input_frame() so we can just return here.
-			if input_frame == null:
-				return
-			
 			if _logger:
 				_logger.data['input_tick'] = input_tick
 			
