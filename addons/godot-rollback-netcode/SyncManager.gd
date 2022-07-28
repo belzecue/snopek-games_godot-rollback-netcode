@@ -29,8 +29,7 @@ class Peer extends Reference:
 	
 	func _init(_peer_id: int, _options: Dictionary) -> void:
 		peer_id = _peer_id
-		if _options.get("spectator", false):
-			spectator = true
+		spectator = _options.get('spectator', false)
 	
 	func record_advantage(ticks_to_calculate_advantage: int) -> void:
 		advantage_list.append(local_lag - remote_lag)
@@ -150,6 +149,7 @@ var input_buffer := []
 var state_buffer := []
 var state_hashes := []
 
+var spectating := false setget set_spectating
 var mechanized := false setget set_mechanized
 var mechanized_input_received := {}
 var mechanized_rollback_ticks := 0
@@ -182,7 +182,6 @@ var skip_ticks: int = 0 setget _set_readonly_variable
 var rollback_ticks: int = 0 setget _set_readonly_variable
 var requested_input_complete_tick: int = 0 setget _set_readonly_variable
 var started := false setget _set_readonly_variable
-var spectating := false setget _set_readonly_variable
 var tick_time: float setget _set_readonly_variable
 
 var _player_peers := {}
@@ -342,6 +341,10 @@ func set_hash_serializer(_hash_serializer: HashSerializer) -> void:
 	assert(not started, "Changing the hash serializer after SyncManager has started will probably break everything")
 	hash_serializer = _hash_serializer
 
+func set_spectating(_spectating: bool) -> void:
+	assert(not started, "Changing the spectating flag after SyncManager has started will probably break everything")
+	spectating = _spectating
+
 func set_mechanized(_mechanized: bool) -> void:
 	assert(not started, "Changing the mechanized flag after SyncManager has started will probably break everything")
 	mechanized = _mechanized
@@ -441,14 +444,6 @@ func stop_logging() -> void:
 		_logger = null
 
 func start() -> void:
-	spectating = false
-	_start()
-
-func start_as_spectator() -> void:
-	spectating = true
-	_start()
-
-func _start() -> void:
 	assert(network_adaptor.is_network_host() or mechanized, "start() should only be called on the host")
 	if started or _host_starting:
 		return
@@ -1002,6 +997,19 @@ func _send_input_messages_to_all_peers() -> void:
 	for peer_id in peers:
 		_send_input_messages_to_peer(peer_id)
 
+func _send_spectating_messages_to_player_peers() -> void:
+	for peer_id in _player_peers:
+		assert(peer_id != network_adaptor.get_network_unique_id(), "Cannot send input to ourselves")
+
+		var peer = _player_peers[peer_id]
+		var msg = {
+			MessageSerializer.InputMessageKey.NEXT_INPUT_TICK_REQUESTED: peer.last_remote_input_tick_received + 1,
+			MessageSerializer.InputMessageKey.NEXT_HASH_TICK_REQUESTED: peer.last_remote_hash_tick_received + 1,
+		}
+		
+		var bytes = message_serializer.serialize_message(msg)
+		network_adaptor.send_input_tick(peer_id, bytes)
+
 func _physics_process(_delta: float) -> void:
 	if not started:
 		return
@@ -1091,7 +1099,7 @@ func _physics_process(_delta: float) -> void:
 	# STEP 2: SKIP TICKS, IF NECESSARY.
 	#####
 	
-	if not mechanized:
+	if not mechanized and not spectating:
 		_record_advantage()
 		
 		if _ticks_spent_regaining_sync > 0:
@@ -1168,34 +1176,37 @@ func _physics_process(_delta: float) -> void:
 	input_tick += 1
 	current_tick += 1
 	
-	if not mechanized and not spectating:
-		var input_frame := _get_or_create_input_frame(input_tick)
-		# The underlying error would have already been reported in
-		# _get_or_create_input_frame() so we can just return here.
-		if input_frame == null:
-			return
-		
-		if _logger:
-			_logger.data['input_tick'] = input_tick
-		
-		var local_input = _call_get_local_input()
-		_calculate_data_hash(local_input)
-		input_frame.players[network_adaptor.get_network_unique_id()] = InputForPlayer.new(local_input, false)
-		
-		# Only serialize and send input when we have real remote peers.
-		if peers.size() > 0:
-			var serialized_input := message_serializer.serialize_input(local_input)
+	if not mechanized:
+		if spectating:
+			_send_spectating_messages_to_player_peers()
+		else:
+			var input_frame := _get_or_create_input_frame(input_tick)
+			# The underlying error would have already been reported in
+			# _get_or_create_input_frame() so we can just return here.
+			if input_frame == null:
+				return
 			
-			# check that the serialized then unserialized input matches the original 
-			if debug_check_message_serializer_roundtrip:
-				var unserialized_input := message_serializer.unserialize_input(serialized_input)
-				_calculate_data_hash(unserialized_input)
-				if local_input["$"] != unserialized_input["$"]:
-					push_error("The input is different after being serialized and unserialized \n Original: %s \n Unserialized: %s" % [ordered_dict2str(local_input), ordered_dict2str(unserialized_input)])
+			if _logger:
+				_logger.data['input_tick'] = input_tick
+			
+			var local_input = _call_get_local_input()
+			_calculate_data_hash(local_input)
+			input_frame.players[network_adaptor.get_network_unique_id()] = InputForPlayer.new(local_input, false)
+			
+			# Only serialize and send input when we have real remote peers.
+			if peers.size() > 0:
+				var serialized_input := message_serializer.serialize_input(local_input)
 				
-			_input_send_queue.append(serialized_input)
-			assert(input_tick == _input_send_queue_start_tick + _input_send_queue.size() - 1, "Input send queue ticks numbers are misaligned")
-			_send_input_messages_to_all_peers()
+				# check that the serialized then unserialized input matches the original 
+				if debug_check_message_serializer_roundtrip:
+					var unserialized_input := message_serializer.unserialize_input(serialized_input)
+					_calculate_data_hash(unserialized_input)
+					if local_input["$"] != unserialized_input["$"]:
+						push_error("The input is different after being serialized and unserialized \n Original: %s \n Unserialized: %s" % [ordered_dict2str(local_input), ordered_dict2str(unserialized_input)])
+					
+				_input_send_queue.append(serialized_input)
+				assert(input_tick == _input_send_queue_start_tick + _input_send_queue.size() - 1, "Input send queue ticks numbers are misaligned")
+				_send_input_messages_to_all_peers()
 	
 	if current_tick > 0:
 		if _logger:

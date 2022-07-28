@@ -13,17 +13,22 @@ onready var reset_button = $CanvasLayer/ResetButton
 const LOG_FILE_DIRECTORY = 'user://detailed_logs'
 
 var logging_enabled := true
-var is_spectator := false
 
 func _ready() -> void:
+	get_tree().network_peer = null
 	get_tree().connect("network_peer_connected", self, "_on_network_peer_connected")
 	get_tree().connect("network_peer_disconnected", self, "_on_network_peer_disconnected")
+	get_tree().connect("connected_to_server", self, "_on_server_connected")
 	get_tree().connect("server_disconnected", self, "_on_server_disconnected")
+	
+	SyncManager.spectating = false
 	SyncManager.connect("sync_started", self, "_on_SyncManager_sync_started")
 	SyncManager.connect("sync_stopped", self, "_on_SyncManager_sync_stopped")
 	SyncManager.connect("sync_lost", self, "_on_SyncManager_sync_lost")
 	SyncManager.connect("sync_regained", self, "_on_SyncManager_sync_regained")
 	SyncManager.connect("sync_error", self, "_on_SyncManager_sync_error")
+
+	$ServerPlayer.set_network_master(1)
 	
 	var cmdline_args = OS.get_cmdline_args()
 	if "server" in cmdline_args:
@@ -47,13 +52,22 @@ func _on_LocalButton_pressed() -> void:
 	SyncManager.start()
 
 func _on_ServerButton_pressed() -> void:
+	SyncManager.spectating = false
 	var peer = NetworkedMultiplayerENet.new()
-	peer.create_server(int(port_field.text), 1)
+	peer.create_server(int(port_field.text))
 	get_tree().network_peer = peer
 	connection_panel.visible = false
 	main_menu.visible = false
 
 func _on_ClientButton_pressed() -> void:
+	SyncManager.spectating = false
+	_start_client()
+
+func _on_SpectatorButton_pressed() -> void:
+	SyncManager.spectating = true
+	_start_client()
+
+func _start_client() -> void:
 	var peer = NetworkedMultiplayerENet.new()
 	peer.create_client(host_field.text, int(port_field.text))
 	get_tree().network_peer = peer
@@ -61,30 +75,37 @@ func _on_ClientButton_pressed() -> void:
 	main_menu.visible = false
 	message_label.text = "Connecting..."
 
-func _on_SpectatorButton_pressed() -> void:
-	is_spectator = true
-	_on_ClientButton_pressed()
-
-func _on_network_peer_connected(peer_id: int):
-	$ServerPlayer.set_network_master(1)
-	if get_tree().is_network_server():
-		$ClientPlayer.set_network_master(peer_id)
-	else:
-		$ClientPlayer.set_network_master(get_tree().get_network_unique_id())
-	
-	SyncManager.add_peer(peer_id)
-	if get_tree().is_network_server():
-		message_label.text = "Starting..."
-		# Give a little time to get ping data.
-		yield(get_tree().create_timer(2.0), "timeout")
-		SyncManager.start()
+func _on_network_peer_connected(_peer_id: int):
+	pass
 
 func _on_network_peer_disconnected(peer_id: int):
-	message_label.text = "Disconnected"
+	var peer = SyncManager.peers[peer_id]
+	if not peer.spectator:
+		message_label.text = "Disconnected"
 	SyncManager.remove_peer(peer_id)
+
+func _on_server_connected() -> void:
+	$ClientPlayer.set_network_master(get_tree().get_network_unique_id())
+	SyncManager.add_peer(1)
+	rpc("register_player", {spectator = SyncManager.spectating})
 
 func _on_server_disconnected() -> void:
 	_on_network_peer_disconnected(1)
+
+master func register_player(options: Dictionary = {}) -> void:
+	var peer_id = get_tree().get_rpc_sender_id()
+	SyncManager.add_peer(peer_id, options)
+	var peer = SyncManager.peers[peer_id]
+
+	if get_tree().is_network_server() and not peer.spectator:
+		get_tree().network_peer.refuse_new_connections = true
+		$ClientPlayer.set_network_master(peer_id)
+		
+		if get_tree().is_network_server():
+			message_label.text = "Starting..."
+			# Give a little time to get ping data.
+			yield(get_tree().create_timer(2.0), "timeout")
+			SyncManager.start()
 
 func _on_SyncManager_sync_started() -> void:
 	message_label.text = "Started!"

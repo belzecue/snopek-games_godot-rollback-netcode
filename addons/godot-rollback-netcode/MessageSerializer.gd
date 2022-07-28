@@ -21,27 +21,33 @@ func serialize_message(msg: Dictionary) -> PoolByteArray:
 
 	buffer.put_u32(msg[InputMessageKey.NEXT_INPUT_TICK_REQUESTED])
 	
-	var input_ticks = msg[InputMessageKey.INPUT]
-	buffer.put_u8(input_ticks.size())
-	if input_ticks.size() > 0:
-		var input_keys = input_ticks.keys()
-		input_keys.sort()
-		buffer.put_u32(input_keys[0])
-		for input_key in input_keys:
-			var input = input_ticks[input_key]
-			buffer.put_u16(input.size())
-			buffer.put_data(input)
+	if msg.has(InputMessageKey.INPUT):
+		var input_ticks = msg[InputMessageKey.INPUT]
+		buffer.put_u8(input_ticks.size())
+		if input_ticks.size() > 0:
+			var input_keys = input_ticks.keys()
+			input_keys.sort()
+			buffer.put_u32(input_keys[0])
+			for input_key in input_keys:
+				var input = input_ticks[input_key]
+				buffer.put_u16(input.size())
+				buffer.put_data(input)
+	else:
+		buffer.put_u8(0)
 	
 	buffer.put_u32(msg[InputMessageKey.NEXT_HASH_TICK_REQUESTED])
 	
-	var state_hashes = msg[InputMessageKey.STATE_HASHES]
-	buffer.put_u8(state_hashes.size())
-	if state_hashes.size() > 0:
-		var state_hash_keys = state_hashes.keys()
-		state_hash_keys.sort()
-		buffer.put_u32(state_hash_keys[0])
-		for state_hash_key in state_hash_keys:
-			buffer.put_u32(state_hashes[state_hash_key])
+	if msg.has(InputMessageKey.STATE_HASHES):
+		var state_hashes = msg[InputMessageKey.STATE_HASHES]
+		buffer.put_u8(state_hashes.size())
+		if state_hashes.size() > 0:
+			var state_hash_keys = state_hashes.keys()
+			state_hash_keys.sort()
+			buffer.put_u32(state_hash_keys[0])
+			for state_hash_key in state_hash_keys:
+				buffer.put_u32(state_hashes[state_hash_key])
+	else:
+		buffer.put_u8(0)
 	
 	buffer.resize(buffer.get_position())
 	return buffer.data_array
