@@ -9,9 +9,9 @@ const Logger = preload("res://addons/godot-rollback-netcode/Logger.gd")
 const DebugStateComparer = preload("res://addons/godot-rollback-netcode/DebugStateComparer.gd")
 
 class Peer extends Reference:
-	var peer_id: int
-	var spectator: bool = false
-	
+	var peer_id: int setget _set_readonly_variable
+	var spectator: bool = false setget _set_readonly_variable
+
 	var rtt: int
 	var last_ping_received: int
 	var time_delta: float
@@ -26,7 +26,10 @@ class Peer extends Reference:
 	
 	var calculated_advantage: float
 	var advantage_list := []
-	
+
+	func _set_readonly_variable(_value) -> void:
+		pass
+
 	func _init(_peer_id: int, _options: Dictionary) -> void:
 		peer_id = _peer_id
 		spectator = _options.get('spectator', false)
@@ -374,12 +377,15 @@ func add_peer(peer_id: int, options: Dictionary = {}) -> void:
 		return
 	if peer_id == network_adaptor.get_network_unique_id():
 		return
-	
+
+	_add_peer(peer_id, options)
+	emit_signal("peer_added", peer_id)
+
+func _add_peer(peer_id: int, options: Dictionary) -> void:
 	var peer = Peer.new(peer_id, options)
 	peers[peer_id] = peer
 	if not peer.spectator:
 		_player_peers[peer_id] = peer
-	emit_signal("peer_added", peer_id)
 
 func has_peer(peer_id: int) -> bool:
 	return peers.has(peer_id)
@@ -387,14 +393,30 @@ func has_peer(peer_id: int) -> bool:
 func get_peer(peer_id: int) -> Peer:
 	return peers.get(peer_id)
 
+func get_player_peer_ids() -> Array:
+	return _player_peers.keys()
+
+func get_player_peer_count() -> int:
+	return _player_peers.size()
+
 func remove_peer(peer_id: int) -> void:
 	if peers.has(peer_id):
-		peers.erase(peer_id)
-		if _player_peers.has(peer_id):
-			_player_peers.erase(peer_id)
+		_remove_peer(peer_id)
 		emit_signal("peer_removed", peer_id)
 	if peers.size() == 0:
 		stop()
+
+func _remove_peer(peer_id: int) -> void:
+	peers.erase(peer_id)
+	if _player_peers.has(peer_id):
+		_player_peers.erase(peer_id)
+
+func update_peer(peer_id: int, options: Dictionary = {}) -> void:
+	assert(peers.has(peer_id), "No peer with given id already exists")
+
+	if peers.has(peer_id):
+		_remove_peer(peer_id)
+		_add_peer(peer_id, options)
 
 func clear_peers() -> void:
 	for peer_id in peers.keys().duplicate():
